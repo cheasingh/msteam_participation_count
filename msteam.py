@@ -17,6 +17,7 @@ password = os.environ.get("MS_PASS")
 endpoint = os.environ.get("ENDPOINT")
 team_id = os.environ.get("TEAM_ID")
 channel_id = os.environ.get("CHANNEL_ID")
+g_endpoint = os.environ.get("MSGROUPENDPOINT")
 
 app = PublicClientApplication(
     app_id, authority=f"https://login.microsoftonline.com/{tenant_name}")
@@ -51,29 +52,41 @@ else:
     # You may need this when reporting a bug
     print(result.get("correlation_id"))
 
-channel_message = requests.get(
-    f'{endpoint}/{team_id}/channels/{channel_id}/messages',
-    headers={'Authorization': 'Bearer ' + result["access_token"]}).json()
 
-valid_chat = []
+def msteam_qa_update():
+    channel_message = requests.get(
+        f'{endpoint}/{team_id}/channels/{channel_id}/messages',
+        headers={'Authorization': 'Bearer ' + result["access_token"]}).json()
+
+    valid_chat = []
+
+    for i in channel_message['value']:
+
+        if i['from'] != None:
+            if i['from']['user'] != None:
+                message_id = i['id']
+                valid_chat.append(i['from']['user']['displayName'])
+                channel_reply = requests.get(
+                    f'{endpoint}/{team_id}/channels/{channel_id}/messages/{message_id}/replies',
+                    headers={'Authorization': 'Bearer ' + result["access_token"]}).json()
+
+                if channel_reply['@odata.count'] > 0:
+                    for value in channel_reply['value']:
+                        if value['from'] != None:
+                            if value['from']['user'] != None:
+                                valid_chat.append(
+                                    value['from']['user']['displayName'])
+
+    user_score = dict(Counter(valid_chat).items())
+    return user_score
 
 
-for i in channel_message['value']:
+def get_member(member):
+    team_member = requests.get(
+        f"{g_endpoint}", headers={'Authorization': 'Bearer ' + result["access_token"]}).json()
 
-    if i['from'] != None:
-        if i['from']['user'] != None:
-            message_id = i['id']
-            valid_chat.append(i['from']['user']['displayName'])
-            channel_reply = requests.get(
-                f'{endpoint}/{team_id}/channels/{channel_id}/messages/{message_id}/replies',
-                headers={'Authorization': 'Bearer ' + result["access_token"]}).json()
-
-            if channel_reply['@odata.count'] > 0:
-                for value in channel_reply['value']:
-                    if value['from'] != None:
-                        # print(value['from']['user']['displayName'])
-                        if value['from']['user'] != None:
-                            valid_chat.append(
-                                value['from']['user']['displayName'])
-
-user_score = dict(Counter(valid_chat).items())
+    for user in team_member['value']:
+        if member in user['mail'] or member.lower() in user['displayName'].lower():
+            return user['displayName']
+    else:
+        return None
