@@ -28,7 +28,7 @@ def to_airtable(data):
 
     if record == None:
         # create new record
-        table.create({'Name': name, 'MS Team Q/A': value})
+        table.create({'Name': name, 'MS Team Q/A': value, 'Class Practice': 0})
     else:
         # update if the value is different from the one online
         if record['fields']['MS Team Q/A'] != value:
